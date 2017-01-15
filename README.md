@@ -7,6 +7,8 @@ EoDSQL uses no external configuration files or XML.
 
 # Getting Starting
 
+Download the latest (2.2) release from here: https://github.com/lemnik/eodsql/releases/tag/2.2
+
 Declare a model class that represents your database table:
 ```
 public class PersonDO {
