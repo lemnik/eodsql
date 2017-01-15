@@ -27,7 +27,7 @@ import net.lemnik.eodsql.spi.util.DataObjectBinding;
  * <span style="color: #0000ff;">public interface</span> <b>UserQuery</b>
  *      <span style="color: #0000ff;">extends</span> BaseQuery {<br>
  * &nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #00aa00; font-weight: bold;">@Call</span>(
- *      <span style="color: #ffa536">"call FIND_USER (?1)"</span)<br>
+ *      <span style="color: #ffa536">"call FIND_USER (?1)"</span>)<br>
  * &nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #0000ff;">public</span> DataSet&lt;User&gt;
  *      <b>getUserById</b>(<span style="color: #0000ff;">int</span> id);<br>
  * }

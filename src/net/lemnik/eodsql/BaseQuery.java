@@ -14,7 +14,7 @@ import java.sql.Connection;
  * checked exceptions. If the method does not declare the exception, it
  * will be wrapped in a {@code RuntimeException} and thrown as an
  * unchecked exception.
- * </p><a name="pooling"><h2>Pooling vs. Non-Pooling</h2></a><p>
+ * </p><h2><a name="pooling">Pooling vs. Non-Pooling</a></h2><p>
  * Depending on how a {@code BaseQuery} is fetched from the {@code QueryTool} determines how
  * {@code Connection}s will be handled by the implementation. A {@code BaseQuery} fetched with
  * a {@link javax.sql.DataSource DataSource} will not hold a {@code Connection}, but will instead
@@ -35,7 +35,7 @@ import java.sql.Connection;
  *      color: #0000ff;">class</span>);<br><br>
  *
  * &nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #00aa00;
- *      font-weight: bold;">@Select</span>(<span style="color: #ffa536">"SELECT
+ *      font-weight: bold;">{@literal @Select}</span>(<span style="color: #ffa536">"SELECT
  *      * FROM users WHERE id = ?1"</span>)<br>
  * &nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #0000ff;">public</span> User
  *      <b>selectUserById</b>(<span style="color: #0000ff;">long</span> id);<br>

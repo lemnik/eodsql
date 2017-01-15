@@ -424,9 +424,9 @@ public abstract class DataObjectBinding<T> {
      * Set the Default-DataObjectBinding type. The type specified here must have a
      * constructor with exactly the following signature (other than the DataObjectBinding class
      * name):
-     * </p><p>
+     * </p>
      * <pre>public DataObjectBinding(Class&lt;?&gt;);</pre>
-     * </p><p>
+     * <p>
      * If no {@code DataObjectBinding} has been set for a class that is requested through
      * the {@link #getDataObjectBinding(java.lang.Class,
      * net.lemnik.eodsql.spi.util.DataObjectBinding.BindingType)} method, an instance of

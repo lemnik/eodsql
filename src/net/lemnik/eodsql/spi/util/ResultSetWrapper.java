@@ -293,7 +293,7 @@ public abstract class ResultSetWrapper<T> {
      * </p><p>
      * This method is <b>not</b> thread-safe, and should only ever be invoked by one
      * Thread at a time.
-     * </p
+     * </p>
      * 
      * @param factory the {@code Factory} to unregister
      * @see Factory Factory - for more information
