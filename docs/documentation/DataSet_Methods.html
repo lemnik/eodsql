@@ -1,0 +1,180 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html>
+    <head>
+        <meta/>
+        <title>EoDSQL Tutorial</title>
+        
+        <style type="text/css">
+            body { font-family : 'Helvetica','sans-serif'; }
+            table { border: 2px #eee solid; width: 80%; margin: 1em auto 1em auto; }
+            th { border: 1px #000 solid; text-align: center; }
+            td { text-align: center; }
+            .odd td { background-color: #eee; }
+            .even td { background-color: #fff; }
+            .method { text-align: left; font-weight: bold; font-family: monospaced; }
+            .yes { color: #00f; }
+            .no { color: #d00; }
+            .footnote { background-color: #eee; padding: 3px 1em 3px 1em; }
+        </style>
+    </head>
+    <body>
+        <h1>DataSet Methods</h1>
+        
+        <p>
+            The methods implemented by a returned <code>DataSet</code> object
+            depend on how they are <code>@Select</code>ed. There are three types of <code>DataSet</code>
+        </p>
+        
+        <ol>
+            <li>Connected</li>
+            <li>Disconnected</li>
+            <li>Updatable (as of 1.1)</li>
+        </ol>
+        
+        <table>
+            <tr>
+                <th>Method</th>
+                <th>Connected</th>
+                <th>Disconnected</th>
+                <th>Updatable</th>
+            </tr>
+            <tr class="even">
+                <td class="method">add(int, Object)</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+            </tr><tr class="odd">
+                <td class="method">add(Object)</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+                <td class="yes">yes</td>
+            </tr><tr class="even">
+                <td class="method">addAll(Collection)</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+                <td class="yes">yes</td>
+            </tr><tr class="odd">
+                <td class="method">addAll(int, Collection)</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+            </tr><tr class="even">
+                <td class="method">clear()</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+            </tr><tr class="odd">
+                <td class="method">close()</td>
+                <td class="yes">yes</td>
+                <td class="yes">n/a</td>
+                <td class="yes">yes</td>
+            </tr><tr class="even">
+                <td class="method">contains(Object)</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+            </tr><tr class="odd">
+                <td class="method">containsAll(Collection)</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+            </tr><tr class="even">
+                <td class="method">disconnect()</td>
+                <td class="yes">yes</td>
+                <td class="yes">n/a</td>
+                <td class="no">no</td>
+            </tr><tr class="odd">
+                <td class="method">get(int)</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+            </tr><tr class="even">
+                <td class="method">indexOf(Object)</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+            </tr><tr class="odd">
+                <td class="method">isConnected()</td>
+                <td class="yes">yes</td>
+                <td class="yes">n/a</td>
+                <td class="yes">yes</td>
+            </tr><tr class="even">
+                <td class="method">isEmpty()</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+            </tr><tr class="odd">
+                <td class="method">iterator()</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+            </tr><tr class="even">
+                <td class="method">lastIndexOf(Object)</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+            </tr><tr class="odd">
+                <td class="method">listIterator()</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+            </tr><tr class="even">
+                <td class="method">listIterator(int)</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+            </tr><tr class="odd">
+                <td class="method">remove(int)</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+                <td class="yes">yes</td>
+            </tr><tr class="even">
+                <td class="method">remove(Object)</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+            </tr><tr class="odd">
+                <td class="method">removeAll(Collection)</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+            </tr><tr class="even">
+                <td class="method">retainAll(Collection)</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+            </tr><tr class="odd">
+                <td class="method">set(int, Object)</td>
+                <td class="no">no</td>
+                <td class="no">no</td>
+                <td class="yes">yes</td>
+            </tr><tr class="even">
+                <td class="method">size()</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+            </tr><tr class="odd">
+                <td class="method">subList(int, int)</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+            </tr><tr class="even">
+                <td class="method">toArray()</td>
+                <td class="yes">disconnects</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+            </tr><tr class="odd">
+                <td class="method">toArray(Object[])</td>
+                <td class="yes">disconnects</td>
+                <td class="yes">yes</td>
+                <td class="yes">yes</td>
+            </tr>
+        </table>
+        
+        <div class="footnote">
+            <p>n/a = implemented, but no action will be taken.</p>
+            <p>disconnects = implemented, but will cause the <code>DataSet</code> to disconnect and cache the ResultSet.</p>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,51 @@
+Notes about specific JDBC Drivers that may limit or alter the functionality
+of EoD SQL.
+
+Hypersonic SQL
+http://www.hsqldb.org/
+
+1) Auto-generated keys are supported by the database engine, but cannot be
+   returned from the PreparedSatement or Statement implementations. So
+   GeneratedKeys become useless. I recommend using UUID's for ID's instead
+   of numeric types. (applies to versions < 1.7)
+
+3) Updatable ResetSets are not supported by the database engine (version<1.9),
+   and so using @Select(readOnly=false) will throw an Exception.
+
+4) Using Updatable DataSets with version >= 1.9 will partly work, updates
+   to the DataSet will not appear within the DataSet (since the database
+   engine doesn't support ResultSet.TYPE_SCROLL_SENSITIVE).
+
+Derby / JavaDB:
+http://db.apache.org/derby/
+
+1) Derby Rollback's seems to throw a NullPointerException after a deletion
+   has taken place within the transaction. So TransactionQuery may not work
+   with DELETE.
+
+2) Auto-generated keys are supported by the database engine, but only as unnamed
+   columns. You can either use UUID's or RETURNED_KEYS_FIRST_COLUMN to work around
+   this limitation.
+
+Small SQL
+http://www.smallsql.de/
+
+1) Small SQL is not thread-safe, though as long as you only use a single
+   Connection object there shouldn't be any problem with EoD SQL. If you
+   find yourself with strange Exceptions and weird data, try using a
+   ReentrantReadWriteLock on you query methods.
+
+MySQL
+http://www.mysql.com/
+
+1) Auto-generated keys are supported by the database engine, but only as unnamed
+   columns. You can either use UUID's or RETURNED_KEYS_FIRST_COLUMN to work around
+   this limitation.
+
+H2
+http://www.h2database.com/
+
+1) H2 doesn't support ResultSet.setFetchDirection() and thus will fallback
+   to a simple "expanding-array" fetch if you return an array of objects
+   from a method. However this techniques performance is inline with
+   normal expectations (ie: using an ArrayList or disconnected DataSet).

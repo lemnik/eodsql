@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="EoDSQL" default="default" basedir=".">
+    <description>Builds, tests, and runs the project EoDSQL.</description>
+
+    <property file="build.properties" />
+    
+    <target name="init">
+        <mkdir dir="${build.classes.dir}" />
+        <mkdir dir="${dist.jar.dir}" />
+        <mkdir dir="${build.test.classes.dir}" />
+        
+        <mkdir dir="${dist.jar.dir}/docs" />
+        <mkdir dir="${dist.jar.dir}/docs/javadoc" />
+        <mkdir dir="${dist.jar.dir}/src" />
+    </target>
+    
+    <target name="clean">
+        <delete dir="${build.classes.dir}" />
+        <delete dir="${dist.jar.dir}" />
+        <delete dir="${build.test.classes.dir}" />
+        
+        <delete>
+            <fileset dir="." includes="eodsql-*" />
+        </delete>
+    </target>
+    
+    <target name="compile" depends="init">
+        <javac optimize="${src.optimize}" debug="${src.debug}" srcdir="${src.dir}" destdir="${build.classes.dir}" source="1.5" target="1.5">
+            <compilerarg value="-Xlint:unchecked" />
+        </javac>
+        
+        <copy todir="${build.classes.dir}">
+            <fileset dir="${src.dir}" excludes="${build.classes.excludes}" />
+        </copy>
+    </target>
+
+    <target name="jar" depends="compile">
+        <jar file="${dist.jar}" compress="true">
+            <fileset dir="${build.classes.dir}" />
+        </jar>
+    </target>
+    
+    <target name="default" depends="init,jar" />
+    
+    <target name="compile-tests" depends="compile">
+        <javac optimize="false" debug="true" srcdir="${test.src.dir}" destdir="${build.test.classes.dir}" source="1.5" target="1.5">
+            <compilerarg value="-Xlint:unchecked" />
+            <classpath location="${build.classes.dir}" />
+            <classpath>
+                <fileset dir="lib" includes="**/*.jar" />
+            </classpath>
+        </javac>
+    </target>
+    
+    <target name="test" depends="init,compile,compile-tests">
+        <junit fork="true" showoutput="true">
+            <classpath>
+                <path location="${build.classes.dir}" />
+                <path location="${build.test.classes.dir}" />
+                <fileset dir="lib" includes="**/*.jar" />
+            </classpath>
+            <batchtest>
+                <fileset dir="${build.test.classes.dir}" includes="**/*Test.class" />
+            </batchtest>
+            <formatter type="plain" usefile="false" />
+
+            <sysproperty key="test.db.driver" value="${test.db.driver}" />
+            <sysproperty key="test.db.url" value="${test.db.url}" />
+            <sysproperty key="test.db.user" value="${test.db.user}" />
+            <sysproperty key="test.db.password" value="${test.db.password}" />
+        </junit>
+    </target>
+    
+    <target name="javadoc" depends="init">
+        <javadoc destdir="dist/docs/javadoc" source="${src.dir}" windowtitle="EoD SQL" additionalparam="-link http://java.sun.com/javase/6/docs/api/" failonerror="true" useexternalfile="true" maxmemory="512m">
+            <classpath>
+                <path path="${javac.classpath}"/>
+            </classpath>
+            <sourcepath>
+                <pathelement location="${src.dir}"/>
+            </sourcepath>
+            <packageset dir="${src.dir}" includes="*/**"/>
+            <fileset dir="${src.dir}" includes="*.java"/>
+        </javadoc>
+    </target>
+    
+    <target name="dist" depends="jar,javadoc" description="Build Distribution Files">
+        <copy todir="dist/docs" flatten="true" includeemptydirs="false">
+            <fileset dir="docs" includes="**/*" excludes="license.txt,EoDSQLTutorial.txt" />
+        </copy>
+        
+        <copy todir="dist" file="docs/license.txt" />
+        
+        <copy todir="dist/src">
+            <fileset dir="src" includes="**/*.java" />
+        </copy>
+        
+        <delete>
+            <fileset dir="." includes="eodsql-*" />
+        </delete>
+        
+        <move file="dist" tofile="eodsql-${version}" />
+        <tar destfile="eodsql-${version}.tar" basedir="." includes="eodsql-${version}/**" />
+        <gzip destfile="eodsql-${version}.tar.gz" src="eodsql-${version}.tar" />
+        <bzip2 destfile="eodsql-${version}.tar.bz2" src="eodsql-${version}.tar" />
+        <zip compress="true" destfile="eodsql-${version}.zip" basedir="." includes="eodsql-${version}/**" />
+        
+        <delete file="eodsql-${version}.tar" />
+        <delete dir="eodsql-${version}" />
+    </target>
+</project>

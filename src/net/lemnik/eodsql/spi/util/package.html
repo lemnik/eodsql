@@ -1,0 +1,41 @@
+<html>
+    <body>
+        <p>
+            The <code>net.lemnik.eodsql.spi.util</code> package contains many helper classes
+            to aid in the creation of third-party <a href="../QueryFactory.html">QueryFactorie</a>s
+            and <a href="../MethodImplementation.html">MethodImplementation</a>s. The package
+            is mostly focused on providing the automatic binding mechanism used in the
+            <a href="../../impl/DefaultQueryFactory.html">standard QueryFactory</a>.
+        </p><p>
+            The classes in this package are capable of automatically wrap a
+            ResultSet in all the standard type: arrays, <code>List</code>,
+            <code>Set</code>, <code>Collection</code>, <code>DataSet</code> and
+            <code>DataIterator</code>. The package is also used to create
+            bindings to the base data-object's (which can also be customized).
+        </p>
+        <h2>How this package is arranged</h2>
+        <p>
+            The <a href="Query.html">Query</a> class is responsible for decoding
+            EoD SQL query strings. It doesn't decode the SQL contained in
+            a query (and therefore could contain any query language).
+        </p><p>
+            <a href="ResultSetWrapper.html">ResultSetWrapper</a> is both
+            the parent class and the registry for classes that wrap a
+            <code>ResultSet</code> object in another object format. Thus
+            a <code>ResultSetWrapper</code> implementation is generally
+            responsible for creating the objects returned from annotated
+            methods.
+        </p><p>
+            Some of the <a href="ResultSetWrapper.html">ResultSetWrapper</a>
+            implementations include additional parameters that may be
+            passed to them when they are created. These are usually bound
+            to an attribute on their related annotation type.
+        </p><p>
+            A <code>ResultSetWrapper</code> generally delegates the "row"
+            binding to a <a href="DataObjectBinding.html">DataObjectBinding</a>
+            object. A <code>DataObjectBinding</code> is either bound to
+            a specific <a href="DataObjectBinding.html#setDefaultDataObjectBinding(java.lang.Class)">type</a>
+            (excluding any sub-types) or as a fallback (or default) binding.
+        </p>
+    </body>
+</html>

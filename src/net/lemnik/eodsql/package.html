@@ -1,0 +1,42 @@
+<html>
+    <body>
+        <p>
+            The core package of EoD SQL most developers will not need to make use of
+            any of the other packages. Of the types in this package only a few
+            are of importance to most developers, these are:
+        </p>
+        
+        <ol>
+            <li><a href="QueryTool.html">QueryTool</a> - The main entry point for the API</li>
+            <li><a href="BaseQuery.html">BaseQuery</a> - The super-interface of all Query types</li>
+            <li><a href="Select.html">@Select</a> - Used to describe a <tt>"SELECT * FROM table"</tt> type of SQL query</li>
+            <li><a href="Update.html">@Update</a> - Used to describe a <tt>"UPDATE table SET"</tt> type of SQL query</li>
+            <li><a href="Call.html">@Call</a> - Used to describe a <tt>"CALL find_user(id)"</tt> type of SQL query</li>
+            <li>
+                <a href="DataSet.html">DataSet</a> - An implementation of <tt>java.util.List</tt> 
+                that can remain connected to the database. <tt>DataSet</tt> can be thought
+                of as EoD SQL's replacement for <tt>java.sql.ResultSet</tt>.
+            </li>
+            <li>
+                <a href="DataIterator.html">DataIterator</a> - An <tt>Iterator</tt> that remains
+                connected to the database, and implements a forward-only view of the <tt>ResultSet</tt>.
+                A <tt>DataIterator</tt> is often much faster and lighter weight than other
+                return types.
+            </li>
+        </ol>
+        
+        <p>
+            To use EoD SQL you will need at least three of your own types:
+        </p>
+        
+        <ol>
+            <li>One or more <i>Query interfaces</i> - see <a href="BaseQuery.html">BaseQuery</a> for more information</li>
+            <li><i>Data Objects</i> - which will be bound to a each row of a <tt>ResultSet</tt></li>
+            <li>Your normal code which will invoke methods you declared in your Query interface in order to interact wit the database</li>
+        </ol>
+        
+        <p>
+            For more information about usage of EoD SQL, please refere to the <a href="../../../../tutorial.html">EoD SQL Tutorial</a>.
+        </p>
+    </body>
+</html>

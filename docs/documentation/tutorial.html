@@ -1,0 +1,449 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html>
+    <head>
+        <meta/>
+        <title>EoDSQL Tutorial</title>
+        
+        <style type="text/css">
+            body { font-family : 'Helvetica','sans-serif'; }
+            
+            .code { margin: 2em; padding: 1ex; background-color: #ddd; color: black; border: 1px solid #7c8dff; font-family: monospace; }
+            .code .keyword { color: #4c6dff; background-color: transparent; }
+            .code .annotation { color: #29cb42; background-color: transparent; }
+            .code .literal { color: #d20b0b; background-color: transparent; }
+            .code .type { color: #6f6b24; background-color: transparent; }
+            .code .comment { color: #656565; background-color: transparent; font-style: italic; font-weight: bold; }
+            .code blockquote { padding-left: 3em; margin: 0; }
+            
+            .sql { margin: 2em; padding: 1ex; background-color: #ddd; color: black; border: 1px solid #8fdfff; font-family: monospace; }
+            .sql .keyword { color: #af0000; background-color: transparent; }
+            .sql .type { font-weight: bold; color: #8f5daf; background-color: transparent; }
+            .sql blockquote { padding-left: 3em; margin: 0; }
+        </style>
+    </head>
+    
+    <h1>What is EoDSQL?</h1>
+    
+    <p>
+        EoDSQL -- "Ease of Development", in case you were wondering -- is a lightweight object-relational bridge for Java. It relies only on the standard JDBC APIs, and uses only a small number of annotations to specify data mappings between Java and relational databases. This means, of course, that it can only be used with Java 1.5 or newer. EoDSQL uses no external configuration files or XML.
+    </p><p>
+        EoDSQL does <i>not</i> attempt to define your database structure, nor does it attempt to define Java objects based on your database structure. You have to do that work yourself. On the flipside, this means that EoDSQL will not mess up any optimisations or special structures you have set up. EoDSQL does not get between you and your SQL code in any way.
+    </p><p>
+        Default behaviour of the EoDSQL runtime library is usually sufficient for simple relational data access requirements.
+    </p><p>
+        This tutorial provides a brief introduction to using EoDSQL; we make no attempt to describe more advanced functionality, and refer the reader to the API documentation.
+    </p><p>
+        For the purpose of this tutorial, we assume that a table exists in the database, defined as follows:
+    </p>
+    
+    <div class="sql">
+        <span class="keyword">CREATE</span> <span class="keyword">TABLE</span> `users` (<br />
+            <blockquote>
+            `id` <span class="type">int</span>(8) <span class="keyword">NOT</span> <span class="keyword">NULL</span>,<br />
+            `last_name` <span class="type">varchar</span>(64),<br />
+            `first_name` <span class="type">varchar</span>(64),<br />
+            `date_of_birth` <span class="type">datetime</span> default <span class="keyword">NULL</span>,<br />
+            <span class="keyword">PRIMARY</span> <span class="keyword">KEY</span>  (`id`)<br />
+            </blockquote>
+        );
+    </div>
+    
+    <h1>Overview of Using EoDSQL</h1>
+    
+    <p>There are three critical pieces we have to understand in order to access a relational DBMS using EoDSQL:</p>
+    
+    <ol>
+        <li>We have to write a <b>Data Object</b> class for each kind of data object that you wish to store in the DB. Data objects may have their fields stored in a single table in the database, with a simple one-to-one mapping between the data members of the data object and the columns in the table, or the fields may be spread across any number of tables, joined or accessed in any scheme you may wish to devise.</li>
+        <li>We have to write a <b>Data Access Interface</b>, which declares Java methods that execute SQL code when called. EoDSQL takes care of generating the actual code that accesses the database, maps the method arguments to SQL statement parameters, and returns appropriate Java datatypes that result from executing the SQL.</li>
+        <li>The QueryTool, which is the engine of EoDSQL, and does all the grunt work.</li>
+    </ol>
+    
+    <p>
+        You are in full control of your SQL; EoDSQL does not generate, optimise, mangle or manage SQL for you.
+    </p><p>
+        Let us take a look at how we
+    </p>
+    
+    <ol>
+        <li>declare a simple <b>data object</b>, then</li>
+        <li>declare a <b>data access interface</b>, and finally</li>
+        <li>use these two pieces of code to access a database with the help of the QueryTool.</li>
+    </ol>
+    
+    <h1>Data Objects</h1>
+    
+    <p>
+        Data objects are ordinary Java objects (POJOs) that we use within our applications. They are mere passive containers for the data we wish to hold in the data-access layer of a well-structured application, and should not contain any business logic.
+    </p><p>
+        Data objects must conform to the following requirements:
+    </p>
+    
+    <ul>
+        <li>fields that are to be persisted in the database must either be declared <tt>public</tt>, or must have public get- and set-methods, following normal JavaBean conventions, and</li>
+        <li>persistent classes must have a <tt>public</tt> no-argument constructor.</li>
+    </ul>
+    
+    <p>
+        Transient, static, volatile and non-public fields are allowed, but Transient, static and non-public fields are ignored by EoDSQL.
+    </p><p>
+        Here are some examples:
+    </p>
+    
+    <h3>Example 1: Using <tt>public</tt> Data Members</h3>
+    
+    <div class="code">
+        <span class="keyword">public</span> <span class="keyword">class</span> PersonDO {<br />
+            <blockquote>
+            <span class="keyword">public</span> <span class="type">int</span> id;<br />
+            <span class="keyword">public</span> String name;<br />
+            <span class="keyword">public</span> String loginID;<br />
+            <span class="keyword">public</span> String email;<br />
+            <span class="keyword">public</span> Date birthDate;<br /><br />
+        
+            <span class="keyword">public</span> <span class="type">int</span> equals( Object obj ){<br />
+                <blockquote>
+                <span class="keyword">if</span>( !(obj <span class="keyword">instanceof</span> UserDO )) <span class="keyword">return</span> <span class="literal">false</span>;<br />
+                <span class="keyword">return</span> id == ((UserDO)obj).id;<br />
+                </blockquote>
+            }<br /><br />
+            
+            <span class="keyword">public</span> <span class="type">int</span> hashCode(){<br />
+                <blockquote>
+                <span class="keyword">return</span> id;<br />
+                </blockquote>
+            }<br /><br />
+            
+            <span class="keyword">public</span> UserDO(){}<br />
+            </blockquote>
+        }
+    </div>
+    
+    <p>
+        This is the recommended way of declaring data objects. I use the convention that data objects get named <i>something<b>DO</b></i>, but it is not required.
+    </p><p>
+        EoDSQL assumes that the field names ("lastName", "birthDate", etc.) are the same as the names of columns in your database. <i>This strikes us as pretty unlikely, particularly if you are dealing with legacy databases. In particular, this example will not work with the <tt>users</tt> table we defined at the start of the tutorial!</i> EoDSQL ignores the letter-case of column names since different JDBC drivers behave differently, so columns named "<tt>last_name</tt>" and "<tt>Last_Name</tt>" refer to the same column.
+    </p>
+    
+    <h3>Example 2: Explicitly Mapping Fields to Columns</h3>
+    
+    <div class="code">
+        <span class="keyword">import</span> net.lemnik.eodsql.ResultColumn;<br /><br />
+        
+        <span class="keyword">public</span> <span class="keyword">class</span> Person {<br /><br />
+            <blockquote>
+            <span class="keyword">public</span> <span class="type">int</span> id;<br /><br />
+        
+            <span class="annotation">@ResultColumn</span>( <span class="literal">"last_name"</span> )<br />
+            <span class="keyword">public</span> String lastName;<br /><br />
+        
+            <span class="annotation">@ResultColumn</span>( <span class="literal">"first_name"</span> )<br />
+            <span class="keyword">public</span> String firstName;<br /><br />
+        
+            <span class="annotation">@ResultColumn</span>( <span class="literal">"date_of_birth"</span> )<br />
+            <span class="keyword">public</span> Date birthDate;<br />
+            </blockquote>
+        }
+    </div>
+    
+    <p>
+        Here EoDSQL maps values from the <tt>last_name</tt> column to the <tt>lastName</tt> field in a Person object and <i>vice versa</i>. Similarly for <tt>first_name</tt> and <tt>date_of_birth</tt>. Note that we have <i>not</i> bothered to annotate the <tt>id</tt> field; this means that <tt>id</tt> is also the name of the appropriate column in the DB.
+    </p><p>
+        It may feel a little odd, breaking encapsulation by declaring <tt>public</tt> fields. But it is <i>only</i> a data object. If, nevertheless, you really can't stand it, and you are willing to incur a little bit of a runtime performance penalty, go ahead and declare your Java class using the normal bean patterns, and use the <tt>@ResultSet</tt> annotation on the setter-methods; EoDSQL will call the methods as needed to access the data values.
+    </p>
+    
+    <h3>Example 3: Mapping Columns to Get- and Set-Methods</h3>
+    
+    <div class="code">
+        <span class="keyword">import</span> net.lemnik.eodsql.ResultColumn;<br /><br />
+
+        <span class="keyword">public</span> <span class="keyword">class</span> Person {<br /><br />
+            <blockquote>
+            <span class="keyword">private</span> <span class="type">int</span> id;<br />
+            <span class="keyword">private</span> String lastName;<br />
+            <span class="keyword">private</span> String firstName;<br />
+            <span class="keyword">private</span> Date birthDate;<br /><br />
+        
+            <span class="annotation">@ResultColumn</span>( <span class="literal">"id"</span> )<br />
+            <span class="keyword">public</span> <span class="type">void</span> setIDNumber( <span class="type">int</span> id ){...}<br /><br />
+        
+            <span class="keyword">public</span> <span class="type">int</span> getIDNumber(){...}<br /><br />
+        
+            <span class="annotation">@ResultColumn</span>( <span class="literal">"last_name"</span> )<br />
+            <span class="keyword">public</span> <span class="type">void</span> setSurname( <span class="keyword">final</span> String aName ){...}<br /><br />
+        
+            <span class="keyword">public</span> String getSurname(){...}<br /><br />
+        
+            <span class="annotation">@ResultColumn</span>( <span class="literal">"first_name"</span> )<br />
+            <span class="keyword">public</span> <span class="type">void</span> setGivenName( <span class="keyword">final</span> String aName ){...}<br /><br />
+        
+            <span class="keyword">public</span> String getGivenName(){...}<br /><br />
+        
+            <span class="annotation">@ResultColumn</span>( <span class="literal">"date_of_birth"</span> )<br />
+            <span class="keyword">public</span> <span class="type">void</span> setBirthDate( <span class="keyword">final</span> Date aDate ){...}<br /><br />
+        
+            <span class="keyword">public</span> Date getBirthDate(){...}<br />
+            </blockquote>
+        }
+    </div>
+    
+    <p>
+        <i>Yes, we've left out the actual body of the accessor methods. If you can't deal with that, you're probably reading the wrong document.</i>
+    </p><p>
+        Note that using this approach to mapping, EoDSQL completely ignores the name of the method. If the <tt>setXXX</tt> methods are given more than one parameter, EoDSQL will complain when it validates the mappings.
+    </p>
+    
+    <h1>Declaring a Data Access Interface</h1>
+    
+    <p>
+        Now we need to declare the code that gets data into and out of our database. We will introduce the important bits of the interface piece-by-piece, declaring methods that create, update and read PersonDO objects as declared in the previous section.
+    </p>
+    
+    <div class="code">
+        <span class="keyword">import</span> net.lemnik.eodsql.Select;<br /><br />
+
+        <span class="keyword">public</span> <span class="keyword">interface</span> PersonDAI <span class="keyword">extends</span> net.lemnik.eodsql.BaseQuery {<br />
+            ...<i>method declarations</i>...<br />
+        }
+    </div>
+    
+    <p>
+        A data-access interface <b>must</b> extend <tt>net.lemnik.eodsql.BaseQuery</tt>. My convention is to name the interface <i>something<b>DAI</b></i>, but EoDSQL does not care.
+    </p>
+    
+    <h2>Reading Data</h2>
+    
+    <p>
+        We start by adding a single method that fetches a single row of data from the database. For this example, we have assumed that the <tt>id</tt> field is the primary-key in the database, and is constrained to be unique for every PersonDO.
+    </p>
+    
+    <div class="code">
+        <span class="annotation">@Select</span>( <span class="literal">"SELECT * FROM users WHERE id=?{1}"</span> )<br />
+        <span class="keyword">public</span> PersonDO getUserByID( <span class="type">int</span> id );
+    </div>
+    
+    <p>
+        This method will retrieve the (single) row of data (assuming there is one) keyed by the <tt>id</tt> parameter passed into the method.
+    </p><p>
+        A PersonDO object will be created, and its fields filled in as specified by the <tt>@ResultColumn</tt> annotations in the PersonDO class declaration, or by matching field names to column names.
+    </p><p>
+        <i>"What happens if the underlying JDBC machinery throws a SQLException?" you may ask.</i> Good question! We will answer it later in the section on <a href="#exceptions">Exception Handling</a>.
+    </p><p>
+        Let us add another method for fetching user-data from the <tt>users</tt> table.  This time we will fetch PersonDOs based on their <tt>last_name</tt> and <tt>first_name</tt>, so we may get several rows of data:
+    </p>
+    
+    <div class="code">
+        <span class="annotation">@Select</span>( <span class="literal">"SELECT * FROM users WHERE last_name=?1 AND first_name=?2"</span> )<br />
+        <span class="keyword">public</span> DataSet&lt;PersonDO&gt; getUsersByName( String last, String first );
+    </div>
+    
+    <p>
+        Three things to note about this:
+    </p>
+    
+    <ol>
+        <li>The EoDSQL collection class <tt>DataSet</tt> implements <tt>java.util.List</tt>, but optional <tt>List</tt> methods may not be implemented. In particular, you should <i>not</i> assume that you can <tt>add</tt> objects to the <tt>DataSet</tt>, since it may cache the results in memory, or, indeed, be disconnected from the database altogether. You should treat <tt>DataSet</tt> as a "read-only" structure. (In reality, <tt>DataSet</tt> takes great care to <i>not</i> load entire (potentially very large) data sets into memory.)</li>
+        <li>Parameters are specified using a positional notation: the parameter "<tt>last</tt>" is substituted into the <tt>SELECT</tt> statement as ?1; "<tt>first</tt>" is mapped to ?2. Notice that this differs from the way we paramterised the <tt>SELECT</tt> statement in <tt>getUsersByID()</tt>, where we wrote "<tt>?{1}</tt>".  Either way is legal, but we recommend always using braces, for reasons which will become clear shortly.  For full details on how SQL statements may be parameterised, refer to the @Update JavaDocs</li>
+        <li>Although <tt>getUsersByName()</tt> is declared to return a <tt>DataSet</tt>, you may also declare it as returning an <b>array</b> of (in this case) PersonDO objects, or <i>any</i> <tt>java.util.Collection</tt> interface. The disadvantage of doing this is that all the data is loaded into memory, and the database connection closed. <tt>DataSet</tt> is specifically supplied as a way around these problems, but the choice remains yours.</li>
+    </ol>
+    
+    <p>
+        Let's write yet another <tt>SELECT</tt> statement to get users by name, but this time passing an already-existing PersonDO as the specifier for the names we're looking for:
+    </p>
+    
+    <div class="code">
+        <span class="annotation">@Select</span>( <span class="literal">"SELECT * FROM users WHERE first_name=?{1.firstName} AND last_name=?{1.lastName}"</span> )<br />
+        <span class="keyword">public</span> DataSet&lt;PersonDO&gt; getUsersByName( PersonDO aPerson );
+    </div>
+    
+    <p>
+        Now we only have a single (PersonDO) argument to the method, so only one parameter to substitute into the SQL statement. We pick out the bits we want using the property names (As specified by JavaBeans).  The order in which we specify them does not matter, since EoDSQL will match the names.
+    </p><p>
+        We might also want to retrieve single fields of primitive data from the database, rather than full-blown objects. To do this we introduce a new annotation:
+    </p>
+    
+    <div class="code">
+        <span class="annotation">@SelectPrimitive</span>( <span class="literal">"SELECT count(*) FROM users"</span> )<br />
+        <span class="keyword">public</span> <span class="type">int</span> getNumberOfUsers();
+    </div>
+    
+    <h2>Writing Data</h2>
+    
+    <p>
+        We have two cases to deal with here:
+    </p>
+    
+    <ol>
+        <li>adding a new PersonDO to the database, and</li>
+        <li>updating the data for an existing PersonDO</li>
+    </ol>
+    
+    <p>
+        We'll start by inserting a new PersonDO object into the <tt>users</tt> table. Note that we are assuming that we have some other way to check (perhaps by calling <tt>getUserByID()</tt>) that we are not inserting duplicate data. If we do, the underlying JDBC driver will throw a <tt>SQLException</tt> which will percolate its way back up the call stack to us.
+    </p>
+    
+    <div class="code">
+        <span class="annotation">@Update</span>( <span class="literal">"INSERT INTO users "</span><br />
+            <blockquote>
+            + <span class="literal">"(id, last_name, first_name, birth_date) "</span><br />
+            + <span class="literal">"values (?{1.id}, ?{1.lastName}, ?{1.firstName}, ?{1.birthDate}"</span><br />
+            + <span class="literal">")"</span><br />
+            </blockquote>
+        )<br />
+        <span class="keyword">public</span> <span class="type">void</span> addNewUser( PersonDO user );
+    </div>
+    
+    <p>
+        This introduces us to the <tt>@Update</tt> annotation. Parameters are passed as before.
+    </p><p>
+        The <tt>addNewUser()</tt> method has been declared as a <tt>void</tt> method here, but could equally have been declared as returning an <tt></tt>int}}, in which case it will return the number of rows inserted into the database.
+    </p><p>
+        Finally, in very similar fashion, we can also update the database:
+    </p>
+    
+    <div class="code">
+        <span class="annotation">@Update</span>( <span class="literal">"UPDATE users SET first_name=?{1.firstName} WHERE id=?{1.id}"</span> )<br />
+        <span class="keyword">public</span> <span class="type">int</span> setFirstName( PersonDO aPerson );
+    </div>
+    
+    <h2>Putting it All Together</h2>
+    
+    <p>
+        Pulling together all the bits of code in this section, we present The Compleate Data-Access Interface:
+    </p>
+    
+    <div class="code">
+        <span class="keyword">import</span> net.lemnik.eodsql.DataSet;<br />
+        <span class="keyword">import</span> net.lemnik.eodsql.Select;<br />
+        <span class="keyword">import</span> net.lemnik.eodsql.SelectPrimitive;<br />
+        <span class="keyword">import</span> net.lemnik.eodsql.Update;<br /><br />
+        
+        <span class="keyword">public</span> <span class="keyword">interface</span> PersonDAI <span class="keyword">extends</span> net.lemnik.eodsql.BaseQuery {<br /><br />
+            <blockquote>
+            <span class="annotation">@Select</span>( <span class="literal">"SELECT * FROM users WHERE id=?{1}"</span> )<br />
+            <span class="keyword">public</span> PersonDO getUserByID( <span class="type">int</span> id );<br /><br />
+        
+            <span class="annotation">@Select</span>( <span class="literal">"SELECT * FROM users WHERE last_name=?1 AND first_name=?2"</span> )<br />
+            <span class="keyword">public</span> DataSet&lt;PersonDO&gt; getUsersByName( String last, String first );<br /><br />
+        
+            <span class="annotation">@SelectPrimitive</span>( <span class="literal">"SELECT count(*) FROM users"</span> )<br />
+            <span class="keyword">public</span> <span class="type">int</span> getNumberOfUsers();<br /><br />
+        
+            <span class="annotation">@Update</span>( <span class="literal">"INSERT INTO users "</span><br />
+                <blockquote>
+                + <span class="literal">"(id, last_name, first_name, birth_date) "</span><br />
+                + <span class="literal">"values (?{1.id}, ?{1.lastName}, ?{1.firstName}, ?{1.birthDate}"</span><br />
+                + <span class="literal">")"</span><br />
+                </blockquote>
+            )<br />
+            <span class="keyword">public</span> <span class="type">void</span> addNewUser( PersonDO user );<br /><br />
+        
+            <span class="annotation">@Update</span>( <span class="literal">"UPDATE users SET first_name=?{1.firstName} WHERE id=?{1.id}"</span> )<br />
+            <span class="keyword">public</span> <span class="type">int</span> setFirstName( PersonDO aPerson );<br />
+            </blockquote>
+        }
+    </div>
+    
+    <h1>Putting It All Together</h1>
+    
+    <p>
+        Finally we can put it all together! So far we have:
+    </p>
+    
+    <ol>
+        <li>a PersonDO class, corresponding to a table (<tt>users</tt>) in our hypothetical database, annontated to match field-names to column names, and</li>
+        <li>a PersonDAI data-access interface that declares a number of data access methods, and ties them to some SQL statements.</li>
+    </ol>
+    
+    <p>
+        All we need to do now is point the EoDSQL <tt>QueryTool</tt> at them to do the real work when we call the data-access methods. We assume that the following code fragments are really in some application class.
+    </p><p>
+        To get things going, all we need to do two things:
+    </p>
+    
+    <ol>
+        <li>tell EoDSQL how to access the database, and</li>
+        <li>get a Query object out of EoDSQL that allows us to call those data-access methods we defined earlier</li>
+    </ol>
+    
+    <p>
+        EoDSQL allows you to choose whether to use <tt>java.sql.Connection</tt> objects or a <tt>javax.sql.DataSource</tt> to access the database. If you choose to give <tt>Connection</tt>s to EoDSQL yourself, then you are directly responsible for creating/obtaining the <tt>Connection</tt>s yourself. Personally I cannot imagine why you would not prefer to use <tt>DataSource</tt>s, in which case you (usually) gain the advantage that the <tt>Connection</tt>s are pooled (except for a couple of broken <tt>DataSource</tt> implementations.)
+    </p><p>
+        In either case, you pass your <tt>Connection</tt> or <tt>DataSource</tt> to EoDSQL's <tt>QueryTool</tt> to construct a Query Object.
+    </p>
+    
+    <h3>Example 1: Using a <tt>java.sql.Connection</tt></h3>
+    
+    <div class="code">
+        <span class="keyword">import</span> java.sql.Connection;<br />
+        Connection conn = ...;<br />
+        PersonDAI query = QueryTool.getQuery( conn, PersonDAI.<span class="keyword">class</span> );
+    </div>
+    
+    <h3>Example 2: Using a <tt>javax.sql.DataSource</tt></h3>
+    
+    <div class="code">
+        <span class="keyword">import</span> javax.sql.DataSource;<br />
+        DataSource ds = ...;<br />
+        PersonDAI query = QueryTool.getQuery( ds, PersonDAI.<span class="keyword">class</span> );
+    </div>
+    
+    <p>
+        EoDSQL has the notion of a <i>default</i> DataSource:
+    </p>
+    
+    <h3>Example 3: Using the Default <tt>DataSource</tt></h3>
+    
+    <div class="code">
+        <span class="keyword">import</span> javax.sql.DataSource;<br />
+        DataSource ds = ...;<br />
+        QueryTool.setDefaultDataSource( ds );<br />
+        PersonDAI query = QueryTool.getQuery( PersonDAI.<span class="keyword">class</span> );<br />
+    </div>
+    
+    <p>
+        This is useful in the common cases where we have several (maybe many) data-access interfaces, all accessing a single database.
+    </p><p>
+        Once we have obtained a concrete instance of our PersonDAI, we can simply go ahead and make use of it:
+    </p>
+    
+    <div class="code">
+        PersonDO person = <span class="keyword">new</span> PersonDO();<br />
+        person.id = <span class="literal">42</span>;<br />
+        person.lastName = <span class="literal">"Baker"</span>;<br />
+        person.firstName = <span class="literal">"Able"</span>;<br />
+        person.birthDate = <span class="literal">null</span>;    <span class="comment">// yes, EoDSQL will handle nulls correctly</span><br /><br />
+        
+        query.addNewUser( person );<br /><br />
+        
+        person = query.getPersonByID( <span class="literal">3</span> );<br /><br />
+        
+        <span class="type">int</span> populationCount = query.getNumberOfUsers();
+    </div>
+    
+    <h1><a name="exceptions">Exception Handling</a></h1>
+    
+    <p>
+        What happens if an Exception is thrown from the underlying JDBC driver? EoD SQL has a simple rule:
+    </p><p>
+        <b>If you don't declare the Exception, it will be wrapped in a <tt>java.lang.RuntimeException</tt> and thrown</b>
+    </p><p>
+        In other words: you will have to handle exceptions, one way or another. In the above examples, we didn't declare any
+        exceptions. So if any occure, they will be wrapped in a RuntimeException and thrown.
+    </p><p>
+        If you do want checked Exceptions, simply declare them:
+    </p>
+    
+    <div class="code">
+        <span class="annotation">@Select</span>( <span class="literal">"SELECT * FROM users WHERE last_name=?1 AND first_name=?2"</span> )<br />
+        <span class="keyword">public</span> DataSet&lt;PersonDO&gt; getUsersByName( String last, String first ) <span class="keyword">throws</span> SQLException;
+    </div>
+    
+    <h1>Where To From Here?</h1>
+    
+    <p>
+        My advice is to start playing around with EoD SQL. Write a bit of code and try it out.
+    </p><p>
+        For more information on the API iteself, and more of it's features, browse it's JavaDocs.
+    </p>
+</html>

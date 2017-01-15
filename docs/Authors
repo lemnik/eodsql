@@ -1,0 +1,6 @@
+Jason Morris            - Initial development
+David Burton            - RETURNED_KEYS_FIRST_COLUMN implementation
+Mike Morris             - Suggestions and bug finding
+Thomas "Synod" Smith    - @Call annotation, and returning primitive from @Select
+Bernd Rinn              - Batch updates, and several important bug fixes, lots of cleanup work
+Frank Schwarz           - Part of the @Select(into) implementation, testing and bugfixes

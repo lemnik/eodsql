@@ -1,0 +1,323 @@
+!!!What is EoDSQL?
+
+EoDSQL -- "Ease of Development", in case you were wondering -- is a lightweight object-relational bridge for Java. It relies only on the standard JDBC APIs, and uses only a small number of annotations to specify data mappings between Java and relational databases. This means, of course, that it can only be used with Java 1.5 or newer. EoDSQL uses no external configuration files or XML.
+
+EoDSQL does ''not'' attempt to define your database structure, nor does it attempt to define Java objects based on your database structure. You have to do that work yourself. On the flipside, this means that EoDSQL will not mess up any optimisations or special structures you have set up. EoDSQL does not get between you and your SQL code in any way.
+
+Default behaviour of the EoDSQL runtime library is usually sufficient for simple relational data access requirements.
+
+This tutorial provides a brief introduction to using EoDSQL; we make no attempt to describe more advanced functionality, and refer the reader to [The EoDSQL Book] and API documentation.
+
+For the purpose of this tutorial, we assume that a table exists in the database, defined as follows:
+
+{{{
+CREATE TABLE `users` (
+  `id` int(8) NOT NULL,
+  `last_name` varchar(64),
+  `first_name` varchar(64),
+  `date_of_birth` datetime default NULL,
+  PRIMARY KEY  (`id`)
+);
+}}}
+
+!!!Overview of Using EoDSQL
+
+There are three critical pieces we have to understand in order to access a relational DBMS using EoDSQL:
+
+# We have to write a __Data Object__ class for each kind of data object that you wish to store in the DB. Data objects may have their fields stored in a single table in the database, with a simple one-to-one mapping between the data members of the data object and the columns in the table, or the fields may be spread across any number of tables, joined or accessed in any scheme you may wish to devise.
+# We have to write a __Data Access Interface__, which declares Java methods that execute SQL code when called. EoDSQL takes care of generating the actual code that accesses the database, maps the method arguments to SQL statement parameters, and returns appropriate Java datatypes that result from executing the SQL.
+# The QueryTool, which is the engine of EoDSQL, and does all the grunt work.
+
+You are in full control of your SQL; EoDSQL does not generate, optimise, mangle or manage SQL for you.
+
+Let us take a look at how we
+
+# declare a simple __data object__, then
+# declare a __data access interface__, and finally
+# use these two pieces of code to access a database with the help of the QueryTool.
+
+!!!Data Objects
+
+Data objects are ordinary Java objects (POJOs) that we use within our applications. They are mere passive containers for the data we wish to hold in the data-access layer of a well-structured application, and should not contain any business logic.
+
+Data objects must conform to the following requirements:
+
+* fields that are to be persisted in the database must either be declared {{public}}, or must have public get- and set-methods, following normal JavaBean conventions, and
+* persistent classes must have a {{public}} no-argument constructor.
+
+Transient, static, volatile and non-public fields are allowed, but Transient, static and non-public fields are ignored by EoDSQL.
+
+Here are some examples:
+
+__Example 1: Using {{public}} Data Members__
+
+{{{
+public class PersonDO {
+    public int id;
+    public String name;
+    public String loginID;
+    public String email;
+    public Date birthDate;
+
+    public boolean equals( Object obj ){
+        if( !(obj instanceof UserDO )) return false;
+        return id.equals( ((UserDO)obj).id );
+    }
+    
+    public int hashCode(){
+        return id.hashCode();
+    }
+    
+    public PersonDO(){}
+}
+}}}
+
+This is the recommended way of declaring data objects. I use the convention that data objects get named ''something__DO__'', but it is not required.
+
+EoDSQL assumes that the field names ("lastName", "birthDate", etc.) are the same as the names of columns in your database. ''This strikes us as pretty unlikely, particularly if you are dealing with legacy databases. In particular, this example will not work with the {{users}} table we defined at the start of the tutorial!'' EoDSQL ignores the letter-case of column names since different JDBC drivers behave differently, so columns named "{{last_name}}" and "{{Last_Name}}" refer to the same column.
+
+__Example 2: Explicitly Mapping Fields to Columns__
+
+{{{
+import ResultColumn;
+
+public class Person {
+
+    public int id;
+
+    @ResultColumn( "last_name" )
+    public String lastName;
+
+    @ResultColumn( "first_name" )
+    public String firstName;
+
+    @ResultColumn( "date_of_birth" )
+    public Date birthDate;
+}
+}}}
+
+Here EoDSQL maps values from the {{last_name}} column to the {{lastName}} field in a Person object and ''vice versa''. Similarly for {{first_name}} and {{date_of_birth}}. Note that we have ''not'' bothered to annotate the {{id}} field; this means that {{id}} is also the name of the appropriate column in the DB.
+
+It may feel a little odd, breaking encapsulation by declaring {{public}} fields. But it is ''only'' a data object. If, nevertheless, you really can't stand it, and you are willing to incur a little bit of a runtime performance penalty, go ahead and declare your Java class using the normal bean patterns, and use the {{@ResultSet}} annotation on the getter- and setter-methods; EoDSQL will call the methods as needed to access the data values.
+
+__Example 3: Mapping Columns to Get- and Set-Methods__
+
+{{{
+import ResultColumn;
+
+public class Person {
+
+    private int id;
+    private String lastName;
+    private String firstName;
+    private Date birthDate;
+
+    @ResultColumn( "id" )
+    public void setIDNumber( int id ){...}
+
+    public int getIDNumber(){...}
+
+    @ResultColumn( "last_name" )
+    public void setSurname( final String aName ){...}
+
+    public String getSurname(){...}
+
+    @ResultColumn( "first_name" )
+    public void setGivenName( final String aName ){...}
+
+    public String getGivenName(){...}
+
+    @ResultColumn( "date_of_birth" )
+    public void setBirthDate( final Date aDate ){...}
+
+    public Date getBirthDate(){...}
+}
+}}}
+
+''Yes, we've left out the actual body of the accessor methods. If you can't deal with that, you're probably reading the wrong document.''
+
+Note that using this approach to mapping, EoDSQL completely ignores the name of the method. If the {{setXXX}} methods are given more than one parameter, EoDSQL will complain when it validates the mappings.
+
+!!!Declaring a Data Access Interface
+
+Now we need to declare the code that gets data into and out of our database. We will introduce the important bits of the interface piece-by-piece, declaring methods that create, update and read PersonDO objects as declared in the previous section.
+
+{{{
+public interface PersonDAI extends BaseQuery {
+    ...''method declarations''...
+}
+}}}
+
+A data-access interface __must__ extend {{BaseQuery}}. My convention is to name the interface ''something__DAI__'', but EoDSQL does not care.
+
+!! Reading Data
+
+We start by adding a single method that fetches a single row of data from the database. For this example, we have assumed that the {{id}} field is the primary-key in the database, and is constrained to be unique for every PersonDO.
+
+{{{
+    @Select( "SELECT * FROM users WHERE id=?{1}" )
+    public PersonDO getUserByID( int id );
+}}}
+
+This method will retrieve the (single) row of data (assuming there is one) keyed by the {{id}} parameter passed into the method.
+
+A PersonDO object will be created, and its fields filled in as specified by the {{@ResultColumn}} annotations in the PersonDO class declaration, or by matching field names to column names.
+
+''"What happens if the underlying JDBC machinery throws a SQLException?" you may ask.'' Good question! We will answer it later in the section on [Exception Handling|ExceptionHandling].
+
+Let us add another method for fetching user-data from the {{users}} table.  This time we will fetch PersonDOs based on their {{last_name}} and {{first_name}}, so we may get several rows of data:
+
+{{{
+    @Select( "SELECT * FROM users WHERE last_name=?1 AND first_name=?2" )
+    public DataSet<PersonDO> getUsersByName( String last, String first );
+}}}
+
+Three things to note about this:
+
+# The EoDSQL collection class {{DataSet}} implements {{java.util.List}}, but optional {{List}} methods may not be implemented. In particular, you should ''not'' assume that you can {{add}} objects to the {{DataSet}}, since it may cache the results in memory, or, indeed, be disconnected from the database altogether. You should treat {{DataSet}} as a "read-only" structure. (In reality, {{DataSet}} takes great care to ''not'' load entire (potentially very large) data sets into memory.)
+# Parameters are specified using a positional notation: the parameter "{{last}}" is substituted into the {{SELECT}} statement as ?1; "{{first}}" is mapped to ?2. Notice that this differs from the way we paramterised the {{SELECT}} statement in {{getUsersByID()}}, where we wrote "{{?{1}}}".  Either way is legal, but we recommend always using braces, for reasons which will become clear shortly.  For full details on how SQL statements may be parameterised, refer to 
+# Although {{getUsersByName()}} is declared to return a {{DataSet}}, you may also declare it as returning an __array__ of (in this case) PersonDO objects, or ''any'' valid {{java.util}} Collection. The disadvantage of doing this is that all the data is loaded into memory, and the database connection closed. {{DataSet}} is specifically supplied as a way around these problems, but the choice remains yours.
+
+Let's write yet another {{SELECT}} statement to get users by name, but this time passing an already-existing PersonDO as the specifier for the names we're looking for:
+
+{{{
+    @Select( "SELECT * FROM users WHERE first_name=?{1.firstName} AND last_name=?{1.lastName} )
+    public DataSet<PersonDO> getUsersByName( PersonDO aPerson );
+}}}
+
+Now we only have a single (PersonDO) argument to the method, so only one parameter to substitute into the SQL statement. We pick out the bits we want using the field names.  The order in which we specify them does not matter, since EoDSQL will match the names.
+
+We might also want to retrieve single fields of primitive data from the database, rather than full-blown objects. To do this we introduce a new annotation:
+
+{{{
+    @SelectPrimitive( "SELECT count(*) FROM users" )
+    public int getNumberOfUsers();
+}}}
+
+!! Writing Data
+
+We have two cases to deal with here:
+
+# adding a new PersonDO to the database, and
+# updating the data for an existing PersonDO
+
+We'll start by inserting a new PersonDO object into the {{users}} table. Note that we are assuming that we have some other way to check (perhaps by calling {{getUserByID()}}) that we are not inserting duplicate data. If we do, the underlying JDBC driver will throw a {{SQLException}} which will percolate its way back up the call stack to us.
+
+{{{
+    @Update( "INSERT INTO users "
+        + "(id, last_name, first_name, birth_date) "
+        + "values (?{1.id}, ?{1.lastName}, ?{1.firstName}, ?{1.birthDate}"
+        + ")"
+    )
+    public void addNewUser( PersonDO user );
+}}}
+
+This introduces us to the {{@Update}} annotation. Parameters are passed as before.
+
+The {{addNewUser()}} method has been declared as a {{void}} method here, but could equally have been declared as returning an {{int}}, in which case it will return the number of rows inserted into the database.
+
+Finally, in very similar fashion, we can also update the database:
+
+{{{
+   @Update( "UPDATE users SET first_name=?{1.firstName} WHERE id=?{1.id}" )
+   public int setFirstName( PersonDO aPerson );
+}}}
+
+!! Putting it All Together
+
+Pulling together all the bits of code in this section, we present The Compleate Data-Access Interface:
+
+{{{
+public interface PersonDAI extends BaseQuery {
+
+    @Select( "SELECT * FROM users WHERE id=?{1}" )
+    public PersonDO getUserByID( int id );
+
+    @Select( "SELECT * FROM users WHERE last_name=?1 AND first_name=?2" )
+    public DataSet<PersonDO> getUsersByName( String last, String first );
+
+    @SelectPrimitive( "SELECT count(*) FROM users" )
+    public int getNumberOfUsers();
+
+    @Update( "INSERT INTO users "
+        + "(id, last_name, first_name, birth_date) "
+        + "values (?{1.id}, ?{1.lastName}, ?{1.firstName}, ?{1.birthDate}"
+        + ")"
+    )
+    public void addNewUser( PersonDO user );
+
+   @Update( "UPDATE users SET first_name=?{1.firstName} WHERE id=?{1.id}" )
+   public int setFirstName( PersonDO aPerson );
+}
+}}}
+
+!!! Putting It All Together
+
+Finally we can put it all together! So far we have:
+
+# a PersonDO class, corresponding to a table ({{users}}) in our hypothetical database, annontated to match field-names to column names, and
+# a PersonDAI data-access interface that declares a number of data access methods, and ties them to some SQL statements.
+
+All we need to do now is point the EoDSQL {{QueryTool}} at them to do the real work when we call the data-access methods. We assume that the following code fragments are really in some application class.
+
+To get things going, all we need to do two things:
+
+# tell EoDSQL how to access the database, and
+# get a Query object out of EoDSQL that allows us to call those data-access methods we defined earlier
+
+EoDSQL allows you to choose whether to use {{java.sql.Connection}} objects or a {{javax.sql.DataSource}} to access the database. If you choose to give {{Connection}}s to EoDSQL yourself, then you are directly responsible for creating/obtaining the {{Connection}}s yourself. Personally I cannot imagine why you would not prefer to use {{DataSource}s, in which case you (usually) gain the advantage that the {{Connection}}s are pooled (except for a couple of broken {{DataSource}} implementations.)
+
+In either case, you pass your {{Connection}} or {{DataSource}} to EoDSQL's {{QueryTool}} to construct a Query Object.
+
+__Example 1: Using a {{java.sql.Connection}}__
+
+{{{
+    import java.sql.Connection;    
+    Connection conn = ...
+    PersonDAI query = QueryTool.getQuery( conn, PersonDAI.class );
+}}}
+
+__Example 2: Using a {{javax.sql.DataSource}}
+
+{{{
+    import javax.sql.DataSource;    
+    DataSource ds = ...
+    PersonDAI query = QueryTool.getQuery( ds, PersonDAI.class );
+}}}
+
+The above two methods are needed if you will be accessing more than one database in your application.  In this simple tutorial, though, we are only accessing a single database.
+
+EoDSQL has the notion of a ''default'' DataSource:
+
+__Example 3: Using the Default {{DataSource}}__
+
+{{{
+    import javax.sql.DataSource;    
+    DataSource ds = ...
+    QueryTool.setDefaultDataSource( ds );
+    PersonDAI query = QueryTool.getQuery( ds, PersonDAI.class );
+}}}
+
+This is useful in the common cases where we have several (maybe many) data-access interfaces, all accessing a single database.
+
+Once we have obtained a concrete instance of our PersonDAI, we can simply go ahead and make use of it:
+
+{{{
+    PersonDO person = new PersonDO();
+    person.id = 42;
+    person.lastName = "Baker";
+    person.firstName = "Able";
+    person.birthDate = null;    // yes, EoDSQL will handle nulls correctly
+    
+    query.addNewUser( person );
+    
+    person = query.getPersonByID( 3 );
+    
+    int populationCount = query.getNumberOfUsers();
+}}}
+
+!!!Type Mapping
+
+!!!Exception Handling
+
+!!! Where To From Here?
